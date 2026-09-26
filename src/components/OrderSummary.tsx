@@ -17,6 +17,10 @@ export default function OrderSummary({
     size,
     color,
 }: OrderSummaryProps) {
+    const productImage =
+        product.colors.find((option) => option.name === color)?.image ??
+        product.gallery[0].src;
+
     return (
         <aside className="order-panel" aria-label="Order summary">
             <div className="order-heading">
@@ -25,9 +29,7 @@ export default function OrderSummary({
             </div>
             <div className="product-row">
                 <div className="product-art">
-                    <div className="art-orbit orbit-one" />
-                    <div className="art-orbit orbit-two" />
-                    <span>✳</span>
+                    <img src={productImage} alt={color + " " + product.name} />
                 </div>
                 <div className="product-info">
                     <strong>{product.name}</strong>
