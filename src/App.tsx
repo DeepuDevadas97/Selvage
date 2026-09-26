@@ -94,7 +94,7 @@ function DemoSite() {
     return (
         <div className="demo-shell min-h-screen flex flex-col justify-between">
             <main className="demo-main">
-                <div className="demo-banner px-6">
+                <div className="demo-banner px-2 md:px-4 xl:px-6">
                     <Header />
                     <div className="demo-topline">
                         <span className="demo-pill">
@@ -132,6 +132,7 @@ function DemoSite() {
                     <div className="demo-product-card">
                         <div className="demo-product-image">
                             <img
+                                className="!object-bottom"
                                 src={
                                     product.colors.find(
                                         (option) => option.name === color,
