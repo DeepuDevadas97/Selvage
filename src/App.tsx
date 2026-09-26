@@ -68,6 +68,36 @@ function DemoSite() {
             );
     }, []);
 
+    useEffect(() => {
+        const elements = Array.from(
+            document.querySelectorAll<HTMLElement>("[data-scroll-reveal]"),
+        );
+        const reducedMotion = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+        ).matches;
+
+        if (reducedMotion || !("IntersectionObserver" in window)) {
+            elements.forEach((element) =>
+                element.classList.add("scroll-reveal-visible"),
+            );
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) return;
+                    entry.target.classList.add("scroll-reveal-visible");
+                    observer.unobserve(entry.target);
+                });
+            },
+            { threshold: 0.20, rootMargin: "0px 0px -32px 0px" },
+        );
+
+        elements.forEach((element) => observer.observe(element));
+        return () => observer.disconnect();
+    }, []);
+
     const product = products[selectedProduct];
     const buy = () => {
         const options: CheckoutOptions = {
@@ -101,7 +131,7 @@ function DemoSite() {
                             <span /> LIVE DEMO
                         </span>
                     </div>
-                    <section className="demo-hero">
+                    <section className="demo-hero" data-scroll-reveal>
                         <div className="demo-copy">
                             <p className="eyebrow">
                                 Considered design, made to last
@@ -129,7 +159,7 @@ function DemoSite() {
                 </div>
 
                 <section className="demo-content">
-                    <div className="demo-product-card">
+                    <div className="demo-product-card" data-scroll-reveal>
                         <div className="demo-product-image">
                             <img
                                 className="!object-bottom"
@@ -289,7 +319,7 @@ function DemoSite() {
                         </div>
                     </div>
 
-                    <aside className="demo-side">
+                    <aside className="demo-side" data-scroll-reveal>
                         <section
                             className="callback-panel"
                             aria-labelledby="callback-title"
