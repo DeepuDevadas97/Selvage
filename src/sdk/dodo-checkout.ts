@@ -134,15 +134,35 @@ function open(options: CheckoutOptions): CheckoutHandle {
     });
     const loading = document.createElement("div");
     loading.setAttribute("role", "status");
-    loading.textContent = "Opening secure checkout…";
+    loading.setAttribute("aria-label", "Opening secure checkout");
     Object.assign(loading.style, {
         position: "absolute",
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
-        color: "#fff",
-        font: "500 14px system-ui, sans-serif",
+        width: "68px",
+        height: "36px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "7px",
+        borderRadius: "24px",
+        background: "#fff",
+        boxShadow: "0 8px 28px rgba(0,0,0,.18)",
     });
+    for (let index = 0; index < 3; index += 1) {
+        const dot = document.createElement("span");
+        dot.setAttribute("aria-hidden", "true");
+        Object.assign(dot.style, {
+            width: "12px",
+            height: "12px",
+            flex: "none",
+            borderRadius: "50%",
+            background: "#173d32",
+            animation: `dodo-pulse 900ms ease-in-out ${index * 140}ms infinite`,
+        });
+        loading.append(dot);
+    }
     overlay.append(loading);
     overlay.append(frame);
 
@@ -249,7 +269,7 @@ function open(options: CheckoutOptions): CheckoutHandle {
 
 const sdkStyles = document.createElement("style");
 sdkStyles.textContent =
-    "@keyframes dodo-fade-in{from{opacity:0}to{opacity:1}}@media(max-width:600px){.dodo-checkout-overlay{padding:0!important;overflow:hidden!important}.dodo-checkout-overlay iframe{width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important}}";
+    "@keyframes dodo-fade-in{from{opacity:0}to{opacity:1}}@keyframes dodo-pulse{0%,60%,100%{transform:scale(.72);opacity:.45}30%{transform:scale(1);opacity:1}}@media(max-width:600px){.dodo-checkout-overlay{padding:0!important;overflow:hidden!important}.dodo-checkout-overlay iframe{width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important}}";
 document.head.append(sdkStyles);
 
 window.DodoCheckout = { open };

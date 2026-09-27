@@ -154,7 +154,6 @@ function DemoSite() {
                                 <span>Thoughtfully made for everyday</span>
                             </div>
                         </div>
-                        <div className="demo-art" aria-hidden="true"></div>
                     </section>
                 </div>
 
