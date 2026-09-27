@@ -1,26 +1,28 @@
 # Dodo Checkout
 
-A tiny embeddable checkout demo built with React and TypeScript. It has three pieces: a one-file TypeScript SDK, a sandboxed checkout app, and a demo store that consumes the SDK.
+Small embeddable checkout thing built for the Dodo Payments frontend assignment. Three parts — a TypeScript SDK (one file, no deps), a checkout app that runs inside an iframe, and a demo store page that pretends to be a real site using it.
 
-## Run locally
+## Running it
 
-~~~sh
+```sh
 npm install
 npm run dev
-~~~
+```
 
-Open the Vite URL shown in the terminal. The demo store's **Continue to secure checkout** button opens the checkout in an iframe. Use any name, a valid email, a valid future expiry date, and any three-digit CVC.
+Vite will print a local URL, open that. Click "Continue to secure checkout" on the demo store and the checkout pops up in an iframe. You can type any name, any real-looking email, any future expiry date, and any 3 digit CVC — none of it goes anywhere.
 
-Build the demo app and standalone SDK bundle:
+To build for real:
 
-~~~sh
+```sh
 npm run build
 npm run preview
-~~~
+```
 
-The app is written to **dist/**; the drop-in SDK file is **dist/sdk/dodo-checkout.js**. Host both at the same checkout origin. A third party site can load the SDK from that origin:
+Output goes to `dist/`, and the actual SDK file a site would embed is at `dist/sdk/dodo-checkout.js`. Both the SDK and the checkout app need to be served from the same origin.
 
-~~~html
+If some other site wanted to use this, it'd look like:
+
+```html
 <script src="https://checkout.example.com/sdk/dodo-checkout.js"></script>
 <button id="buy">Buy Selvage</button>
 <script>
@@ -33,40 +35,45 @@ The app is written to **dist/**; the drop-in SDK file is **dist/sdk/dodo-checkou
     });
   });
 </script>
-~~~
+```
 
-The SDK currently serves the checkout app from the root path of the SDK's origin. The demo uses the **prod_123** Signature Crossbody product; product IDs are supplied by the embedding site through the SDK API.
+Right now the SDK just points at the root path of wherever it's hosted to load the checkout — good enough for this demo, obviously wouldn't hardcode it like that for real. The demo uses `prod_123` (the Signature Crossbody bag), but the product ID always comes from whoever's calling `open()`.
 
-## How the pieces talk
+## How the three pieces actually talk to each other
 
-- **src/sdk/dodo-checkout.ts** is the complete TypeScript SDK source. It creates one modal iframe at a time, locks host page scrolling, restores focus on close, handles Escape, and reports load timeouts.
-- The iframe runs this app with a dodo-checkout=1 query parameter. The iframe has a sandbox without allow-same-origin, which gives it an opaque origin and prevents the host from reading its DOM.
-- The SDK creates a per-open channel ID and checks both the iframe window and that ID on every message. Checkout messages are limited to ready, success with a session ID, close with a reason, and error with a code and message.
-- Card number, CVC, expiry, and email remain in the checkout frame. The parent receives only the documented callback fields. Payment is simulated in the browser; there is no processor or server.
-- The demo site's callback log shows each SDK callback as it fires. A second open() call focuses the existing iframe instead of creating another checkout.
+The SDK lives in `src/sdk/dodo-checkout.ts`. When you call `open()`, it builds one iframe, locks scrolling on the host page so the background doesn't scroll behind the modal, remembers what was focused before so it can give focus back after closing, and listens for Escape.
+
+The checkout itself loads inside that iframe with a `dodo-checkout=1` param in the URL. I sandboxed the iframe without `allow-same-origin`, which means it gets an opaque origin — the host page literally cannot reach into its DOM even if it wanted to.
+
+For messages between the two, each `open()` call generates its own channel id, and every incoming message gets checked against both that id and the iframe's actual window reference before it's trusted. The message types are kept small on purpose: `ready`, `success` (with a session id), `close` (with a reason), `error` (with a code + message). That's it.
+
+Card number, CVC, expiry, email — none of that ever leaves the iframe. The parent page only ever sees what's in those four message types above. Also worth saying: there's no backend here, the "payment" is just simulated in-browser.
+
+The demo page has a log panel that prints every callback as it fires, so you can actually see what the host page receives in real time instead of trusting me that it works. If you click Buy again while a checkout is already open, it just refocuses the existing one instead of stacking a second one.
 
 ## Test cards
 
-| Card number | Result |
-| --- | --- |
-| 4242 4242 4242 4242 | Payment succeeds and returns a session ID |
-| 4000 0000 0000 0002 | Payment is declined; checkout stays open for another card |
-| 4000 0000 0000 0341 | First attempt reports a temporary failure; retry succeeds |
+| Card number | What happens |
+|---|---|
+| 4242 4242 4242 4242 | Goes through, returns a session id |
+| 4000 0000 0000 0002 | Declines, checkout stays open so you can try another card |
+| 4000 0000 0000 0341 | Fails the first time, works if you retry |
 
-These are local fake-payment outcomes. Never enter real card information.
+Obviously fake, don't type a real card in there.
 
-## Decisions
+## Two things I went back and forth on
 
-1. **Isolated iframe instead of rendering checkout in the merchant DOM.** It keeps card inputs out of the host document and gives the checkout independent styling. The sandbox uses an opaque origin; the SDK checks the frame window and a unique channel ID for messages.
-2. **Keep payment errors recoverable in place.** A decline or simulated interruption leaves the checkout open, explains what happened, confirms no payment was completed, and lets the customer retry. The merchant still receives an error callback without receiving payment fields.
+**Iframe vs. just rendering the checkout inline in the host page's DOM.** Inline would've been less code and easier to style consistently, but it means card fields sit in the same JS context as whatever the host site is running — which felt wrong for something that's supposed to be a "secure checkout." Went with an iframe, opaque-origin sandboxed, so there's an actual boundary and not just a visual one.
 
-## What I would explore next
+**What to do when a payment fails.** My first instinct was to just fire `onError` and let the host page deal with it, but that felt like it was punting the whole problem onto someone else's page. Ended up keeping the failure inside the checkout instead — show what happened, make it clear nothing was charged, let them retry right there. The host still gets told via callback, just doesn't have to build its own retry UI for something my checkout should be handling anyway.
 
-- Serve the checkout on a dedicated origin with a restrictive Content Security Policy and test real cross-site deployment behavior.
-- Add automated browser coverage for keyboard/focus behavior, frame load failures, repeated opens, and all three test cards.
-- Replace the fake card form with a payment provider's hosted fields/tokenization and server-verified payment sessions.
-- Add a real product catalog and localized currency/tax calculation instead of the demo's fixed products and 9% tax.
+## If I had more time
 
-## Deployment
+- Actually serve the checkout on its own separate origin with a real CSP, and test it cross-site instead of same-origin like in this demo.
+- Write proper tests for the annoying stuff — focus trapping, what happens if the iframe fails to load, spamming `open()`, all three card outcomes.
+- Swap the fake card form for a real provider's hosted fields + server-side session verification, since right now there's zero actual security, it just looks like there is.
+- Real product catalog instead of one hardcoded product, and proper currency/tax handling instead of a flat 9%.
 
-The demo can be hosted as a static Vite site. Build with npm run build and deploy the full dist/ directory. The checkout's sandboxed module assets need Access-Control-Allow-Origin: * so the opaque-origin iframe can load them; Vite dev and preview already serve that header. A public live link still needs to be created by deploying these files to a hosting provider.
+## Deploying
+
+It's a static Vite build so `npm run build` + drop `dist/` on any static host works. One thing to remember: the checkout's assets need `Access-Control-Allow-Origin: *` since the iframe has an opaque origin — Vite's dev/preview servers already send that header by default, just don't forget it if you move hosts. Still need to actually deploy this somewhere and grab a live link for submission.
